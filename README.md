@@ -15,6 +15,13 @@ npm run preview    # serve the production build
 
 Requires Node 20+.
 
+## Workspace layout
+
+- **Command bar, row 1:** the `CCIB COMMAND` brand; the active case pill (case ID, loss, `CRITICAL 92/100`); the `Proportional` / `FIFO` toggle; Play / Pause / Step / Reset; `+ จำลองเหตุการณ์สด`; and one **เครื่องมือ / ส่งออก** menu holding JSON/MD export, Chain API status, the sound toggle and the live-alert history.
+- **Command bar, row 2:** a wide smart search with an input-type pill, and single-line presets (`#1 892-4-10928-3`, `#2 0x9f8c…71a4`, `#3 554-2-90184-7`).
+- **Main area:** the money-flow graph (with a one-line fund strip on top) above the tactical map. The forensic inspector sits on the right with a sticky action bar: freeze/KYC request, ATM CCTV request, and copy evidence summary.
+- **Bottom:** a chronological timeline of 235px cards. The selected card gets a cyan ring.
+
 ## What's inside
 
 | Capability | Where |
@@ -41,11 +48,12 @@ Timestamps are anchored to the moment the app opens, so the workspace always rea
 
 ### Keyboard
 
-`Space` play/pause · `→` step · `L` inject a live alert · `Esc` close dialogs.
+`Space` play/pause · `→` step · `L` inject a live alert · `Esc` close dialogs and menus.
 
 ## Notes
 
 - All names and identifiers are masked or synthetic. Generated documents are **drafts**: the inquiry officer must verify the facts, the legal basis and the official format before signing.
-- External services are optional and keyless: CARTO tiles, Google Fonts, mempool.space / blockstream.info, and explorer links (Tronscan / Etherscan / mempool).
+- Fonts (IBM Plex Sans Thai, JetBrains Mono, Sarabun) are bundled with `@fontsource`, so the UI and printed memos render the same on restricted or offline networks.
+- External services are optional and keyless: CARTO map tiles, mempool.space / blockstream.info, and explorer links (Tronscan / Etherscan / mempool).
 
 **Stack:** React 19 · Vite 7 · TypeScript (strict) · Tailwind CSS v4 · `@xyflow/react` 12 · Leaflet 1.9 + `react-leaflet` 5 · `lucide-react`.

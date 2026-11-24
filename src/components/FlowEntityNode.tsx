@@ -67,17 +67,17 @@ function CompactBody({ data }: { data: EntityNodeData }) {
         ? { k: 'ถอนสด', v: fmtMoneyShort(t.totalIn, t.currency) }
         : { k: 'ค้างปนเปื้อน', v: fmtMoneyShort(t.remainingTainted, t.currency) };
   return (
-    <div className="px-3 pt-2.5 pb-3">
+    <div className="px-3 pt-2 pb-2.5">
       <div className="flex items-center gap-2">
-        <Icon className="size-5 shrink-0" style={{ color: meta.color }} />
-        <span className="num truncate text-[14px] font-bold tracking-wide" style={{ color: meta.color }}>{e.role.split(' · ')[0]}</span>
+        <Icon className="size-6 shrink-0" style={{ color: meta.color }} />
+        <span className="num truncate text-[16px] font-bold tracking-wide" style={{ color: meta.color }}>{e.role.split(' · ')[0]}</span>
         {e.isLive && <Tag color="#ef4444" solid className="!text-[11px]">LIVE</Tag>}
       </div>
-      <div className="num mt-1 truncate text-[19px] font-bold text-slate-50">{e.identifier.length > 16 ? shortId(e.identifier, 6, 4) : e.identifier}</div>
+      <div className="num mt-1 truncate text-[23px] font-bold leading-tight text-[#f8fafc]">{e.identifier.length > 16 ? shortId(e.identifier, 6, 4) : e.identifier}</div>
       {metric && (
         <div className="mt-1 flex items-baseline justify-between gap-2">
-          <span className="text-[13px] text-slate-400">{metric.k}</span>
-          <span className="num truncate text-[19px] font-bold text-sky-200">{metric.v}</span>
+          <span className="shrink-0 text-[15px] text-slate-300">{metric.k}</span>
+          <span className="num truncate text-[22px] font-bold text-sky-200">{metric.v}</span>
         </div>
       )}
       {t && !t.isOrigin && (
@@ -85,7 +85,7 @@ function CompactBody({ data }: { data: EntityNodeData }) {
           <div className="mt-1.5 [&>div]:!h-2.5">
             <PoolBar t={isCash ? { ...t, taintedOut: 0, cleanOut: 0 } : t} />
           </div>
-          <div className="num mt-1 flex items-center justify-between text-[13px]">
+          <div className="num mt-1 flex items-center justify-between text-[15px] font-semibold">
             <span className="text-sky-300">TAINT {fmtPct(t.poolTaintPct, 0)}</span>
             <span className="flex items-center gap-1.5">
               {chokepoint && <span className="size-2.5 rounded-full" style={{ background: CHOKEPOINT_META[chokepoint].color }} title={CHOKEPOINT_META[chokepoint].label} />}
@@ -124,14 +124,14 @@ function FlowEntityNode({ data }: NodeProps<EntityNodeType>) {
 
       <Handle type="target" position={data.vertical ? Position.Top : Position.Left} className={cx(e.type === 'victim' && '!opacity-0')} />
       <div
-        className="relative h-full overflow-hidden rounded-[10px] border bg-ops-card/95 backdrop-blur"
+        className="relative h-full overflow-hidden rounded-[10px] bg-slate-900/95 text-[#f8fafc] backdrop-blur"
         style={{
-          borderColor: isSelected ? meta.color : '#1e293b',
+          border: `1.5px solid ${isSelected ? meta.color : `${meta.color}b3`}`,
           boxShadow: isSelected
-            ? `0 0 0 1px ${meta.color}, 0 0 28px ${meta.color}66, 0 12px 30px rgb(0 0 0 / 0.5)`
+            ? `0 0 0 2px ${meta.color}, 0 0 30px ${meta.color}80, 0 12px 30px rgb(0 0 0 / 0.55)`
             : isExchange
-              ? `0 0 22px ${meta.color}33, 0 10px 24px rgb(0 0 0 / 0.45)`
-              : '0 10px 24px rgb(0 0 0 / 0.45)',
+              ? `0 0 22px ${meta.color}40, 0 10px 24px rgb(0 0 0 / 0.5)`
+              : '0 10px 24px rgb(0 0 0 / 0.5)',
         }}
       >
         <div className="h-[3px]" style={{ background: `linear-gradient(90deg, ${meta.color}, ${meta.color}33)` }} />
@@ -144,12 +144,12 @@ function FlowEntityNode({ data }: NodeProps<EntityNodeType>) {
               <Icon className="size-3.5" style={{ color: meta.color }} />
             </span>
             <div className="min-w-0 flex-1 leading-tight">
-              <div className="num truncate text-[9.5px] font-semibold tracking-wider" style={{ color: meta.color }}>
+              <div className="num truncate text-[10px] font-bold tracking-wider" style={{ color: meta.color }}>
                 {e.role}
               </div>
-              <div className="truncate text-[10.5px] text-slate-400">
+              <div className="truncate text-[11px] text-slate-300">
                 {e.institution}
-                {e.chain && <span className="num text-slate-500"> · {e.chain}</span>}
+                {e.chain && <span className="num text-slate-400"> · {e.chain}</span>}
               </div>
             </div>
             {e.isLive ? (
@@ -157,42 +157,42 @@ function FlowEntityNode({ data }: NodeProps<EntityNodeType>) {
                 <Radio className="size-2.5" /> LIVE
               </Tag>
             ) : (
-              <span className="flex items-center gap-1 text-[9.5px] text-slate-500" title={status.th}>
+              <span className="flex shrink-0 items-center gap-1 text-[10px] text-slate-300" title={status.th}>
                 <span className="size-1.5 rounded-full" style={{ background: status.color }} />
                 {status.th}
               </span>
             )}
           </div>
 
-          <div className={cx('num mt-1.5 truncate font-semibold text-slate-50', long ? 'text-[11px]' : 'text-[12.5px]')} title={e.identifier}>
+          <div className={cx('num mt-1.5 truncate font-bold text-[#f8fafc]', long ? 'text-[11.5px]' : 'text-[13px]')} title={e.identifier}>
             {long ? shortId(e.identifier, 10, 8) : e.identifier}
           </div>
-          <div className="truncate text-[10.5px] text-slate-400">{e.label}</div>
+          <div className="truncate text-[11px] text-slate-300" title={e.label}>{e.label}</div>
 
           {t && (
-            <div className="mt-1.5 space-y-1 rounded-md border border-ops-line bg-ops-bg/70 px-2 py-1">
+            <div className="mt-1.5 space-y-1 rounded-md border border-slate-700/80 bg-slate-950/70 px-2 py-1">
               {t.isOrigin ? (
                 <div className="flex items-baseline justify-between">
-                  <span className="text-[10px] text-slate-500">เงินที่สูญเสีย</span>
-                  <span className="num text-[12px] font-semibold text-slate-100">{fmtMoney(t.victimIn, t.currency)}</span>
+                  <span className="text-[10.5px] text-slate-300">เงินที่สูญเสีย</span>
+                  <span className="num text-[12.5px] font-bold text-[#f8fafc]">{fmtMoney(t.victimIn, t.currency)}</span>
                 </div>
               ) : (
                 <>
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="truncate text-[10px] text-slate-500">
-                      {isCash ? 'ถอนเงินสด' : 'รับเข้า'} <span className="num text-[11px] font-semibold text-slate-100">{isCash ? fmtMoney(t.totalIn, t.currency) : fmtMoneyShort(t.totalIn, t.currency)}</span>
+                    <span className="truncate text-[10.5px] text-slate-300">
+                      {isCash ? 'ถอนเงินสด' : 'รับเข้า'} <span className="num text-[11.5px] font-bold text-[#f8fafc]">{isCash ? fmtMoney(t.totalIn, t.currency) : fmtMoneyShort(t.totalIn, t.currency)}</span>
                     </span>
-                    <span className="num shrink-0 text-[9.5px] font-semibold text-sky-300">TAINT {fmtPct(t.poolTaintPct, 1)}</span>
+                    <span className="num shrink-0 text-[10px] font-bold text-sky-200">TAINT {fmtPct(t.poolTaintPct, 1)}</span>
                   </div>
                   <PoolBar t={isCash ? { ...t, taintedOut: 0, cleanOut: 0 } : t} />
                   {isCash ? (
-                    <div className="text-[9.5px] text-slate-500">ออกจากระบบธนาคารแล้ว — ติดตามทางกายภาพ</div>
+                    <div className="text-[10px] text-slate-300">ออกจากระบบธนาคารแล้ว — ติดตามทางกายภาพ</div>
                   ) : (
                     <div className="flex items-baseline justify-between gap-2">
-                      <span className="shrink-0 text-[10px] text-slate-500">ค้างปนเปื้อน</span>
-                      <span className={cx('num truncate text-[11px] font-semibold', t.remainingTainted > 0.005 ? 'text-sky-200' : 'text-slate-500')}>
+                      <span className="shrink-0 text-[10.5px] text-slate-300">ค้างปนเปื้อน</span>
+                      <span className={cx('num truncate text-[11.5px] font-bold', t.remainingTainted > 0.005 ? 'text-sky-200' : 'text-slate-400')}>
                         {e.currency === 'THB' ? fmtMoney(t.remainingTainted, t.currency) : fmtMoneyShort(t.remainingTainted, t.currency)}
-                        {e.currency !== 'THB' && t.remainingTainted > 0.005 && <span className="font-normal text-slate-500"> ≈{fmtMoneyShort(data.thbRemaining, 'THB')}</span>}
+                        {e.currency !== 'THB' && t.remainingTainted > 0.005 && <span className="font-normal text-slate-300"> ≈{fmtMoneyShort(data.thbRemaining, 'THB')}</span>}
                       </span>
                     </div>
                   )}

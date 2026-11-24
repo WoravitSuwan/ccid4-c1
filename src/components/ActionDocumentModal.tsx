@@ -79,7 +79,7 @@ export default function ActionDocumentModal({ c, initialType, initialEntityId, t
 
   const field = (k: keyof DocSigner, label: string) => (
     <label className="block">
-      <span className="text-[10.5px] text-slate-500">{label}</span>
+      <span className="text-[11.5px] text-slate-300">{label}</span>
       <input
         value={signer[k]}
         onChange={(e) => setSigner((s) => ({ ...s, [k]: e.target.value }))}
@@ -97,7 +97,7 @@ export default function ActionDocumentModal({ c, initialType, initialEntityId, t
             <ShieldAlert className="mt-0.5 size-5 text-fuchsia-300" />
             <div className="min-w-0 flex-1">
               <h2 className="text-[14px] font-semibold text-slate-50">บันทึกข้อความด่วน บช.สอท.</h2>
-              <p className="num text-[10px] tracking-wider text-slate-500">OFFICIAL POLICE DOCUMENT GENERATOR</p>
+              <p className="num text-[10px] tracking-wider text-slate-400">OFFICIAL POLICE DOCUMENT GENERATOR</p>
             </div>
             <button ref={closeRef} type="button" onClick={onClose} className="rounded-md border border-ops-line p-1 text-slate-400 hover:text-white" aria-label="ปิด">
               <X className="size-4" />
@@ -105,7 +105,7 @@ export default function ActionDocumentModal({ c, initialType, initialEntityId, t
           </div>
 
           <div>
-            <div className="mb-1 text-[10.5px] text-slate-500">ประเภทเอกสาร</div>
+            <div className="mb-1 text-[11.5px] text-slate-300">ประเภทเอกสาร</div>
             <div className="grid gap-1.5">
               {(Object.keys(DOC_TYPE_META) as DocumentType[]).map((k) => {
                 const Icon = TYPE_ICON[k];
@@ -124,7 +124,7 @@ export default function ActionDocumentModal({ c, initialType, initialEntityId, t
                     <Icon className="size-4 shrink-0 text-fuchsia-300" />
                     <span className="min-w-0 flex-1">
                       <span className="block text-[12px] text-slate-100">{DOC_TYPE_META[k].th}</span>
-                      <span className="num block text-[9.5px] tracking-wider text-slate-500">{DOC_TYPE_META[k].en} · {n} เป้าหมาย</span>
+                      <span className="num block text-[10.5px] tracking-wider text-slate-300">{DOC_TYPE_META[k].en} · {n} เป้าหมาย</span>
                     </span>
                   </button>
                 );
@@ -133,7 +133,7 @@ export default function ActionDocumentModal({ c, initialType, initialEntityId, t
           </div>
 
           <label className="block">
-            <span className="text-[10.5px] text-slate-500">เป้าหมาย (Entity)</span>
+            <span className="text-[11.5px] text-slate-300">เป้าหมาย (Entity)</span>
             <select
               value={entity?.id ?? ''}
               onChange={(e) => setEntityId(e.target.value)}
@@ -158,7 +158,7 @@ export default function ActionDocumentModal({ c, initialType, initialEntityId, t
           <label className="flex cursor-pointer items-center justify-between rounded-lg border border-ops-line px-2.5 py-2">
             <span>
               <span className="block text-[12px] text-slate-200">ใช้เลขไทย (๑๒๓)</span>
-              <span className="block text-[10px] text-slate-500">ตัวเลขในเนื้อความ — เลขบัญชี/TxID คงเลขอารบิก</span>
+              <span className="block text-[10px] text-slate-400">ตัวเลขในเนื้อความ — เลขบัญชี/TxID คงเลขอารบิก</span>
             </span>
             <input type="checkbox" checked={thaiDigits} onChange={(e) => setThaiDigits(e.target.checked)} className="size-4 accent-fuchsia-500" />
           </label>

@@ -38,27 +38,54 @@ const arrowIcon = (bearing: number, color: string) =>
     iconAnchor: [0, 0],
   });
 
+const HUD_W = 330;
+/** Right-hand space taken by the telemetry card, so fits and fly-tos keep points visible beside it. */
+const hudReserve = (map: L.Map) => (map.getSize().x >= 680 ? HUD_W + 16 : 0);
+
 function MapController({ caseId, geos, focus, fitNonce }: { caseId: string; geos: GeoEvent[]; focus: GeoEvent | null; fitNonce: number }) {
   const map = useMap();
   const geosRef = useRef(geos);
   geosRef.current = geos;
 
+  // Leaflet needs a size recalculation whenever its container changes (grid resize, first paint, tab switch)
   useEffect(() => {
     const el = map.getContainer();
-    const ro = new ResizeObserver(() => map.invalidateSize({ pan: false }));
+    const timers = [0, 120, 400].map((ms) => setTimeout(() => map.invalidateSize({ pan: false }), ms));
+    let raf = 0;
+    const ro = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => map.invalidateSize({ pan: false }));
+    });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      timers.forEach(clearTimeout);
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
   }, [map]);
 
   useEffect(() => {
     const g = geosRef.current;
     if (!g.length) return;
-    if (g.length === 1) map.flyTo([g[0].lat, g[0].lng], 15, { duration: 0.8 });
-    else map.flyToBounds(L.latLngBounds(g.map((x) => [x.lat, x.lng] as [number, number])).pad(0.3), { duration: 0.9, maxZoom: 15 });
+    const right = hudReserve(map);
+    if (g.length === 1) {
+      const z = 15;
+      map.flyTo(map.unproject(map.project([g[0].lat, g[0].lng], z).add([right / 2, 0]), z), z, { duration: 0.8 });
+    } else {
+      map.flyToBounds(L.latLngBounds(g.map((x) => [x.lat, x.lng] as [number, number])), {
+        duration: 0.9,
+        maxZoom: 15,
+        paddingTopLeft: [48, 48],
+        paddingBottomRight: [right + 32, 56],
+      });
+    }
   }, [caseId, fitNonce, map]);
 
   useEffect(() => {
-    if (focus) map.flyTo([focus.lat, focus.lng], Math.max(map.getZoom(), 15), { duration: 0.85 });
+    if (!focus) return;
+    const z = Math.max(map.getZoom(), 15);
+    const shift = hudReserve(map) / 2; // keep the point left of the telemetry card
+    map.flyTo(map.unproject(map.project([focus.lat, focus.lng], z).add([shift, 0]), z), z, { duration: 0.85 });
   }, [focus?.id, focus?.lat, focus?.lng, map]);
   return null;
 }
@@ -93,7 +120,7 @@ export default function TacticalMap({ c, geos, selection, onSelectGeo, onOpenDoc
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PaneHeader icon={Radar} title="พิกัดยุทธวิธี & เส้นทางเคลื่อนที่" badge="LIVE TACTICAL GEOLOCATION" accent="#ef4444">
+      <PaneHeader icon={Radar} title="พิกัดจุดเกิดเหตุ & เส้นทางเคลื่อนที่" badge="LIVE TACTICAL GEO" accent="#ef4444">
         <IconButton title={showLabels ? 'ซ่อนป้ายระยะทาง' : 'แสดงป้ายระยะทาง'} onClick={() => setShowLabels((v) => !v)} active={showLabels}>
           <Route className="size-3.5" />
         </IconButton>
@@ -168,8 +195,8 @@ export default function TacticalMap({ c, geos, selection, onSelectGeo, onOpenDoc
                     {g.isLive ? ' · LIVE' : ''}
                   </div>
                   <div className="font-sans text-[11.5px] font-semibold text-slate-100">{g.terminalId ?? g.ip ?? ent?.identifier}</div>
-                  <div className="text-[10.5px] text-slate-400">{g.locationName}</div>
-                  <div className="num text-[10px] text-slate-400">
+                  <div className="text-[11px] text-slate-300">{g.locationName}</div>
+                  <div className="num text-[10.5px] text-slate-300">
                     {fmtTime(g.timestamp)} · {fmtCoord(g.lat, g.lng)}
                     {g.amount ? ` · ${fmtMoney(g.amount, g.currency ?? 'THB')}` : ''}
                   </div>
@@ -186,9 +213,9 @@ export default function TacticalMap({ c, geos, selection, onSelectGeo, onOpenDoc
 
         {!sorted.length && (
           <div className="absolute inset-0 z-[500] grid place-items-center">
-            <div className="rounded-lg border border-ops-line bg-ops-bar/90 px-4 py-3 text-center text-[12px] text-slate-400">
+            <div className="rounded-lg border border-ops-line2 bg-ops-bar/95 px-4 py-3 text-center text-[13px] text-slate-200">
               ยังไม่มีพิกัด ณ เวลานี้ของไทม์ไลน์
-              <div className="num text-[10px] text-slate-600">NO GEO FIX IN PLAYBACK WINDOW</div>
+              <div className="num text-[11px] text-slate-400">NO GEO FIX IN PLAYBACK WINDOW</div>
             </div>
           </div>
         )}
@@ -209,15 +236,15 @@ export default function TacticalMap({ c, geos, selection, onSelectGeo, onOpenDoc
           />
         )}
 
-        <div className="pointer-events-none absolute bottom-2 left-2 z-[800] flex flex-wrap gap-1.5 rounded-lg border border-ops-line bg-ops-bar/85 px-2 py-1.5 backdrop-blur">
+        <div className="pointer-events-none absolute bottom-2 left-2 z-[800] flex max-w-[calc(100%-70px)] flex-wrap gap-x-3 gap-y-1 rounded-full border border-ops-line2 bg-ops-bar/95 px-3 py-1.5 backdrop-blur">
           {(['ip_login', 'atm_withdrawal', 'cell_ping', 'device_telemetry'] as const).map((t) => (
-            <span key={t} className="num flex items-center gap-1 text-[9.5px] text-slate-400">
-              <span className={cx('inline-block size-2 border border-slate-400', t === 'atm_withdrawal' ? 'rounded-[2px]' : 'rounded-full')} />
-              {GEO_TYPE_LABEL[t].en}
+            <span key={t} className="flex items-center gap-1.5 whitespace-nowrap text-[11px] text-slate-200">
+              <span className={cx('inline-block size-2.5 border border-slate-300', t === 'atm_withdrawal' ? 'rounded-[2px]' : 'rounded-full')} />
+              {GEO_TYPE_LABEL[t].th}
             </span>
           ))}
-          <span className="num flex items-center gap-1 text-[9.5px] text-red-300">
-            <span className="inline-block size-2.5 rounded-full border border-dashed border-red-400" /> SEARCH RADIUS
+          <span className="flex items-center gap-1.5 whitespace-nowrap text-[11px] text-red-200">
+            <span className="inline-block size-2.5 rounded-full border border-dashed border-red-400" /> รัศมีค้นหา
           </span>
         </div>
       </div>
@@ -240,98 +267,78 @@ function TelemetryHUD(props: {
 }) {
   const { g, seq, seg, isLatest, entity, radius, now, color } = props;
   const dir = seg ? compass(seg.bearing) : null;
-  const [collapsed, setCollapsed] = useState(() => typeof window !== 'undefined' && window.innerHeight < 950);
+  const [showDetails, setShowDetails] = useState(() => typeof window === 'undefined' || window.innerHeight >= 950);
+  const headline = g.terminalId ?? g.ip ?? entity?.identifier ?? '—';
+  const details: [string, string][] = [
+    ...(g.ip ? ([['IP / ASN', `${g.ip} · ${g.asn ?? ''}`]] as [string, string][]) : []),
+    ...(g.cellId ? ([['Cell', g.cellId]] as [string, string][]) : []),
+    ...(g.device ? ([['อุปกรณ์', g.device]] as [string, string][]) : []),
+    ...(g.amount !== undefined ? ([['ยอดถอน', fmtMoney(g.amount, g.currency ?? 'THB')]] as [string, string][]) : []),
+    ['เวลา', `${fmtTime(g.timestamp)} ICT`],
+    ...(g.accuracyM ? ([['ความแม่นยำ', `±${g.accuracyM} m`]] as [string, string][]) : []),
+  ];
   return (
-    <div className="thin-scroll absolute right-2 top-2 z-[1000] max-h-[calc(100%-16px)] w-[min(300px,calc(100%-16px))] overflow-y-auto rounded-lg border border-ops-line2 bg-ops-bar/92 shadow-2xl shadow-black/60 backdrop-blur">
-      <div className="flex items-center gap-2 border-b border-ops-line px-2.5 py-1.5">
-        <Crosshair className="size-3.5" style={{ color }} />
-        <span className="num shrink-0 whitespace-nowrap text-[10px] font-semibold tracking-wider text-slate-300">
+    <div
+      className="thin-scroll absolute right-2 top-2 z-[1000] max-h-[calc(100%-16px)] overflow-y-auto rounded-lg border border-ops-line2 bg-ops-bar/95 shadow-2xl shadow-black/60 backdrop-blur"
+      style={{ width: `min(${HUD_W}px, calc(100% - 16px))` }}
+    >
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-ops-line2 px-3 py-2">
+        <Crosshair className="size-4 shrink-0" style={{ color }} />
+        <span className="num whitespace-nowrap text-[11.5px] font-bold tracking-wider text-slate-50">
           {isLatest ? 'LATEST' : 'SELECTED'} #{seq}
         </span>
         <Tag color={color}>{GEO_TYPE_LABEL[g.type].en}</Tag>
         {g.isLive && <Tag color="#ef4444" solid>LIVE</Tag>}
-        <span className="ml-auto truncate whitespace-nowrap text-[10px] text-slate-500">{fmtAgo(g.timestamp, now)}</span>
-        <button type="button" onClick={() => setCollapsed((v) => !v)} className="shrink-0 rounded p-0.5 text-slate-400 hover:text-white" aria-label={collapsed ? 'ขยาย HUD' : 'ย่อ HUD'} aria-expanded={!collapsed}>
-          {collapsed ? <ChevronDown className="size-3.5" /> : <ChevronUp className="size-3.5" />}
-        </button>
+        <span className="ml-auto whitespace-nowrap text-[11px] text-slate-300">{fmtAgo(g.timestamp, now)}</span>
       </div>
-      {collapsed ? (
-        <div className="num truncate px-2.5 py-1.5 text-[11px] text-slate-300">
-          {g.terminalId ?? g.ip ?? entity?.identifier} · <span className="text-sky-200">{fmtCoord(g.lat, g.lng)}</span>
-          {seg && <span className="text-slate-500"> · Δ {fmtDistance(seg.distanceM)} / {fmtDuration(seg.dtMs)}</span>}
-        </div>
-      ) : (
-      <div className="space-y-1.5 px-2.5 py-2">
+      <div className="space-y-2 px-3 py-2.5">
         <div>
-          <div className="num truncate text-[12.5px] font-semibold text-slate-50">{g.terminalId ?? g.ip ?? entity?.identifier}</div>
-          <div className="truncate text-[11px] text-slate-400" title={g.locationName}>
-            {g.locationName}
-          </div>
+          <div className="num text-[13.5px] font-bold text-slate-50 [overflow-wrap:anywhere]">{headline}</div>
+          <div className="text-[12px] leading-snug text-slate-300">{g.locationName}</div>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="num flex-1 rounded border border-ops-line bg-ops-bg px-1.5 py-0.5 text-[11px] text-sky-200">GPS {fmtCoord(g.lat, g.lng)}</span>
+          <span className="num flex-1 whitespace-nowrap rounded-md border border-ops-line2 bg-ops-bg px-2 py-1 text-[12px] text-sky-200">GPS {fmtCoord(g.lat, g.lng)}</span>
           <CopyButton text={`${g.lat.toFixed(6)}, ${g.lng.toFixed(6)}`} title="คัดลอกพิกัด GPS" />
           <a
             href={`https://www.google.com/maps?q=${g.lat},${g.lng}`}
             target="_blank"
             rel="noreferrer noopener"
             title="เปิดใน Google Maps"
-            className="inline-flex items-center rounded-md border border-ops-line px-1.5 py-0.5 text-slate-400 hover:text-slate-100"
+            className="inline-flex items-center rounded-md border border-ops-line2 px-1.5 py-1 text-slate-300 hover:text-white"
           >
-            <ExternalLink className="size-3" />
+            <ExternalLink className="size-3.5" />
           </a>
         </div>
-        <div className="num grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10.5px]">
-          {g.ip && (
-            <>
-              <span className="text-slate-500">IP / ASN</span>
-              <span className="truncate text-right text-slate-200">{g.ip} · {g.asn?.split(' ')[0]}</span>
-            </>
-          )}
-          {g.cellId && (
-            <>
-              <span className="text-slate-500">CELL</span>
-              <span className="truncate text-right text-slate-200">{g.cellId}</span>
-            </>
-          )}
-          {g.amount !== undefined && (
-            <>
-              <span className="text-slate-500">ถอน</span>
-              <span className="text-right text-red-300">{fmtMoney(g.amount, g.currency ?? 'THB')}</span>
-            </>
-          )}
-          <span className="text-slate-500">เวลา</span>
-          <span className="text-right text-slate-200">{fmtTime(g.timestamp)} ICT</span>
-          {g.accuracyM && (
-            <>
-              <span className="text-slate-500">ความแม่นยำ</span>
-              <span className="text-right text-slate-200">±{g.accuracyM} m</span>
-            </>
-          )}
-        </div>
-        {seg && (
-          <div className="grid grid-cols-3 gap-1 rounded-md border border-ops-line bg-ops-bg/70 p-1.5">
-            <div>
-              <div className="flex items-center gap-1 text-[9.5px] text-slate-500"><Navigation className="size-2.5" />Δd</div>
-              <div className="num text-[11.5px] font-semibold text-slate-100">{fmtDistance(seg.distanceM)}</div>
+        {seg ? (
+          <div className="rounded-md border border-ops-line2 bg-ops-bg/80 px-2 py-1.5">
+            <div className="grid grid-cols-3 gap-2">
+              {(
+                [
+                  [Navigation, 'ระยะทาง', fmtDistance(seg.distanceM)],
+                  [Clock, 'เวลา', fmtDuration(seg.dtMs)],
+                  [Gauge, 'ความเร็ว', `${seg.speedKmh.toFixed(1)} km/h`],
+                ] as const
+              ).map(([Icon, label, value]) => (
+                <div key={label}>
+                  <div className="flex items-center gap-1 whitespace-nowrap text-[10.5px] text-slate-300">
+                    <Icon className="size-3" />
+                    {label}
+                  </div>
+                  <div className="num whitespace-nowrap text-[13px] font-bold text-slate-50">{value}</div>
+                </div>
+              ))}
             </div>
-            <div>
-              <div className="flex items-center gap-1 text-[9.5px] text-slate-500"><Clock className="size-2.5" />Δt</div>
-              <div className="num text-[11.5px] font-semibold text-slate-100">{fmtDuration(seg.dtMs)}</div>
-            </div>
-            <div>
-              <div className="flex items-center gap-1 text-[9.5px] text-slate-500"><Gauge className="size-2.5" />v̄</div>
-              <div className="num text-[11.5px] font-semibold text-slate-100">{seg.speedKmh.toFixed(1)} km/h</div>
-            </div>
-            <div className="col-span-3 text-[10px] text-slate-500">
+            <div className="mt-1 text-[11px] text-slate-300">
               จาก #{seq - 1} · ทิศ{dir?.th} <span className="num">({dir?.en} {Math.round(seg.bearing)}°)</span>
             </div>
           </div>
+        ) : (
+          <div className="rounded-md border border-ops-line2 bg-ops-bg/80 px-2 py-1.5 text-[11px] text-slate-300">จุดแรกของเส้นทาง — ยังไม่มีข้อมูลการเคลื่อนที่</div>
         )}
         {isLatest && (
-          <div className="flex items-center justify-between rounded-md border border-red-500/30 bg-red-500/10 px-2 py-1">
-            <span className="text-[10.5px] text-red-200">รัศมีค้นหา / ลาดตระเวน</span>
-            <span className="num text-[11px] font-semibold text-red-100">
+          <div className="flex items-center justify-between gap-2 rounded-md border border-red-400/50 bg-red-500/15 px-2 py-1.5">
+            <span className="whitespace-nowrap text-[11.5px] text-red-100">รัศมีค้นหา / ลาดตระเวน</span>
+            <span className="num whitespace-nowrap text-[12px] font-bold text-white">
               {radius.toLocaleString('en-US')} m · {circleAreaKm2(radius).toFixed(2)} km²
             </span>
           </div>
@@ -340,13 +347,31 @@ function TelemetryHUD(props: {
           <button
             type="button"
             onClick={() => props.onOpenDoc('atm_cctv_request', props.atmEntityId!)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md border border-red-500/50 bg-red-500/15 py-1 text-[11px] font-semibold text-red-100 hover:bg-red-500/25"
+            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-red-600 py-1.5 text-[12px] font-bold text-white hover:bg-red-500"
           >
-            <Cctv className="size-3.5" /> ขอภาพ CCTV ตู้ ATM นี้
+            <Cctv className="size-4" /> ขอภาพ CCTV ตู้ ATM นี้
           </button>
         )}
+        <button
+          type="button"
+          onClick={() => setShowDetails((v) => !v)}
+          aria-expanded={showDetails}
+          className="flex w-full items-center justify-between rounded-md px-1 py-0.5 text-[11.5px] text-slate-300 hover:text-white"
+        >
+          รายละเอียด IP / Cell / อุปกรณ์
+          {showDetails ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+        </button>
+        {showDetails && (
+          <dl className="divide-y divide-white/[0.06] rounded-md border border-ops-line2">
+            {details.map(([k, v]) => (
+              <div key={k} className="flex items-baseline justify-between gap-3 px-2 py-1.5">
+                <dt className="shrink-0 text-[11px] text-slate-300">{k}</dt>
+                <dd className="num text-right text-[11.5px] text-slate-50 [overflow-wrap:anywhere]">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
       </div>
-      )}
     </div>
   );
 }

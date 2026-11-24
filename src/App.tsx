@@ -127,9 +127,16 @@ export default function App() {
   const dismissToast = useCallback((id: string) => setToasts((prev) => prev.filter((t) => t.id !== id)), []);
 
   // ── Selection sync (Graph ↔ Map ↔ Timeline ↔ Inspector) ──
+  /** The entity's own latest GPS fix, else the latest fix of a directly connected entity (so the map always pans). */
   const latestGeoOf = useCallback(
-    (entityId: string) => sortGeo(c.geoEvents.filter((g) => g.entityId === entityId && (!revealed || revealed.geos.has(g.id)))).at(-1),
-    [c.geoEvents, revealed],
+    (entityId: string) => {
+      const visible = (ids: Set<string>) => sortGeo(c.geoEvents.filter((g) => ids.has(g.entityId) && (!revealed || revealed.geos.has(g.id)))).at(-1);
+      const own = visible(new Set([entityId]));
+      if (own) return own;
+      const neighbours = new Set(c.edges.flatMap((e) => (e.source === entityId ? [e.target] : e.target === entityId ? [e.source] : [])));
+      return visible(neighbours);
+    },
+    [c.geoEvents, c.edges, revealed],
   );
 
   const selectEntity = useCallback(
@@ -373,6 +380,7 @@ export default function App() {
         onExport={(k) => void exportCase(k)}
         onSearch={handleSearch}
         onOpenCase={(id) => openCase(id)}
+        onOpenChain={() => setTab('chain')}
         searchIndex={searchIndex}
         soundOn={soundOn}
         onToggleSound={() => setSoundOn((s) => !s)}
@@ -380,7 +388,7 @@ export default function App() {
         liveAlertTotal={liveTotal}
         unseenAlerts={unseen}
         onAlertsClick={() => {
-          setHistoryOpen((o) => !o);
+          setHistoryOpen(true);
           setUnseen(0);
         }}
       />
