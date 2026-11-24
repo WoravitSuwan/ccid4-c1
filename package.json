@@ -1,0 +1,35 @@
+{
+  "name": "ccib-command-center",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "CCIB Cyber-Financial & Geo-Interception Command Center — ศูนย์บัญชาการสืบสวนเส้นทางการเงินดิจิทัลและพิกัดจุดดักจับแบบเรียลไทม์",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.10.2",
+    "leaflet": "^1.9.4",
+    "lucide-react": "^0.577.0",
+    "react": "^19.2.9",
+    "react-dom": "^19.2.9",
+    "react-leaflet": "^5.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "@types/leaflet": "^1.9.22",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "tailwindcss": "^4.1.18",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.8"
+  },
+  "engines": {
+    "node": ">=20.19"
+  }
+}
