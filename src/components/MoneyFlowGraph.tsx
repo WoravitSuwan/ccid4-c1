@@ -52,8 +52,8 @@ type FlowEdgeType = Edge<FlowEdgeData, 'flow'>;
 const FlowEdgeView = memo(function FlowEdgeView(props: EdgeProps<FlowEdgeType>) {
   const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, markerEnd, data } = props;
   const [path, labelX, labelY] = getBezierPath({ sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, curvature: 0.32 });
-  // keep labels legible when zoomed out (counter-scale up to 1.7x)
-  const labelScale = useStore((s) => Math.min(1.35, Math.max(1, 0.85 / s.transform[2])));
+  // keep labels legible when zoomed out (counter-scale up to 1.2× so they never cover the cards)
+  const labelScale = useStore((s) => Math.min(1.2, Math.max(1, 0.85 / s.transform[2])));
   if (!data) return null;
   const { edge, taint, from, to, width, ghost, emphasis, current } = data;
   const gid = `eg-${id}`;
@@ -94,20 +94,20 @@ const FlowEdgeView = memo(function FlowEdgeView(props: EdgeProps<FlowEdgeType>) 
             data.onSelect(edge.id);
           }}
           className={cx(
-            'nodrag nopan absolute rounded-md border bg-ops-bar/95 px-1.5 py-1 text-left shadow-lg shadow-black/50 backdrop-blur transition hover:border-slate-400',
-            emphasis === 'high' ? 'border-slate-400/70' : 'border-ops-line2',
+            'nodrag nopan absolute rounded-md border bg-slate-950/95 px-1.5 py-1 text-left shadow-lg shadow-black/60 backdrop-blur transition hover:border-slate-300',
+            emphasis === 'high' ? 'border-slate-300/80' : 'border-slate-600',
             current && 'ring-2 ring-white/60',
           )}
           style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px) scale(${labelScale})`, pointerEvents: 'all', opacity: ghost ? 0.15 : emphasis === 'dim' ? 0.55 : 1, zIndex: emphasis === 'high' ? 10 : 1 }}
           title={`${edge.channel} · ${edge.txRef}`}
         >
-          <div className="num flex items-center gap-1 text-[10.5px] font-semibold leading-tight text-slate-100">
+          <div className="num flex items-center gap-1 text-[11px] font-semibold leading-tight text-slate-50">
             {fmtMoneyShort(edge.amount, edge.currency)}
-            {conv && <span className="text-slate-400">→ {fmtMoneyShort(edge.receivedAmount!, edge.receivedCurrency!)}</span>}
+            {conv && <span className="text-slate-300">→ {fmtMoneyShort(edge.receivedAmount!, edge.receivedCurrency!)}</span>}
             {edge.isLive && <span className="rounded bg-red-500 px-1 text-[8.5px] text-white">LIVE</span>}
           </div>
-          <div className="num mt-0.5 flex items-center gap-1 text-[9px] leading-none">
-            <span className="text-slate-500">{fmtHM(edge.timestamp)}</span>
+          <div className="num mt-0.5 flex items-center gap-1 text-[9.5px] leading-none">
+            <span className="text-slate-300">{fmtHM(edge.timestamp)}</span>
             <span className="rounded px-1 py-px font-semibold text-sky-100" style={{ background: `rgb(56 189 248 / ${0.12 + pct * 0.38})` }}>
               TAINT {fmtPct(pct, 0)}
             </span>
@@ -119,6 +119,7 @@ const FlowEdgeView = memo(function FlowEdgeView(props: EdgeProps<FlowEdgeType>) 
 });
 
 const nodeTypes = { entity: FlowEntityNode };
+const FIT = { padding: 0.22, duration: 400, maxZoom: 1.05 } as const;
 const edgeTypes = { flow: FlowEdgeView };
 
 // ───────────────────────── Layered auto-layout ─────────────────────────
@@ -165,16 +166,25 @@ const DISPO_COLOR: Record<string, string> = {
   unattributed: '#475569',
 };
 
+const DISPO_SHORT: Record<string, string> = {
+  cash_out: 'เงินสด',
+  exchange: 'Exchange',
+  mule_bank: 'บัญชีม้า',
+  crypto_wallet: 'คริปโต',
+  unattributed: 'ระหว่างทาง',
+};
+
+/** Single-line strip: where the victim's money is now (THB equivalent), recomputed per taint method. */
 function DispositionBar({ taint, method }: { taint: CaseTaintResult; method: TaintMethod }) {
   const d = taint.totals.disposition;
   const [hover, setHover] = useState<string | null>(null);
+  const tip = (x: (typeof d)[number]) => `${x.label}: ${fmtMoney(x.thb, 'THB', { decimals: 0 })} (${fmtPct(x.pct, 1)})`;
   return (
-    <div key={method} className="animate-flash border-b border-ops-line px-3 py-1.5">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span className="shrink-0 text-[11px] text-slate-400" title={`Victim Fund Disposition · ${METHOD_LABEL[method]}`}>
-          เงินผู้เสียหายอยู่ที่ไหน
-        </span>
-      <div className="flex h-3 min-w-[200px] flex-1 gap-[2px] overflow-hidden rounded" role="img" aria-label="สัดส่วนเงินผู้เสียหายตามปลายทาง">
+    <div key={method} className="animate-flash flex h-9 shrink-0 items-center gap-3 overflow-hidden border-b border-ops-line px-3">
+      <span className="hidden shrink-0 whitespace-nowrap text-[12px] font-medium text-slate-200 sm:inline" title={`Victim Fund Disposition · ${METHOD_LABEL[method]}`}>
+        เงินผู้เสียหายอยู่ที่ไหน
+      </span>
+      <div className="flex h-3 min-w-[120px] flex-1 gap-[2px] overflow-hidden rounded" role="img" aria-label={d.map(tip).join(' · ')}>
         {d.map((x) => (
           <div
             key={x.key}
@@ -189,25 +199,29 @@ function DispositionBar({ taint, method }: { taint: CaseTaintResult; method: Tai
                   : DISPO_COLOR[x.key],
               opacity: hover && hover !== x.key ? 0.45 : 1,
             }}
-            title={`${x.label}: ${fmtMoney(x.thb, 'THB', { decimals: 0 })} (${fmtPct(x.pct, 1)})`}
+            title={tip(x)}
           />
         ))}
       </div>
-        <span className="shrink-0 text-[11px] text-slate-400">
-          อายัดได้ ≈ <span className="num font-semibold text-slate-100">{fmtMoney(taint.totals.recoverableTHB, 'THB', { decimals: 0 })}</span>
-          <span className="num text-slate-500"> / {fmtMoney(taint.totals.victimLossTHB, 'THB', { decimals: 0 })}</span>
-        </span>
-      </div>
-      <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+      <div className="hidden shrink-0 items-center gap-3 lg:flex">
         {d.map((x) => (
-          <span key={x.key} className={cx('flex items-center gap-1.5 text-[10.5px] text-slate-400 transition', hover && hover !== x.key && 'opacity-50')}>
+          <span
+            key={x.key}
+            title={tip(x)}
+            onMouseEnter={() => setHover(x.key)}
+            onMouseLeave={() => setHover(null)}
+            className={cx('flex items-center gap-1.5 whitespace-nowrap text-[11.5px] text-slate-300 transition', hover && hover !== x.key && 'opacity-50')}
+          >
             <span className="size-2 rounded-sm" style={{ background: DISPO_COLOR[x.key] }} />
-            {x.label}
-            <span className="num text-slate-200">{fmtMoneyShort(x.thb, 'THB')}</span>
-            <span className="num text-slate-500">{fmtPct(x.pct, 1)}</span>
+            {DISPO_SHORT[x.key]}
+            <span className="num font-semibold text-slate-50">{fmtPct(x.pct, 0)}</span>
           </span>
         ))}
       </div>
+      <span className="shrink-0 whitespace-nowrap text-[12px] text-slate-300">
+        อายัดได้ ≈ <span className="num font-semibold text-slate-50">{fmtMoney(taint.totals.recoverableTHB, 'THB', { decimals: 0 })}</span>
+        <span className="num hidden text-slate-400 sm:inline"> / {fmtMoney(taint.totals.victimLossTHB, 'THB', { decimals: 0 })}</span>
+      </span>
     </div>
   );
 }
@@ -241,17 +255,28 @@ function GraphCanvas(p: Props & { commandsRef: { current: GraphCommands | null }
   const lastFitKey = useRef('');
   const wrapRef = useRef<HTMLDivElement>(null);
   const [orientation, setOrientation] = useState<GraphOrientation>('LR');
+  const userViewport = useRef(false); // officer panned / zoomed manually → don't auto-refit on resize
+  const fitRef = useRef(() => {});
+  fitRef.current = () => void fitView(FIT);
 
-  // Portrait / narrow canvas (phones, split tablets) → top-to-bottom flow
+  // Portrait / narrow canvas (phones, split tablets) → top-to-bottom flow; re-centre on resize
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
       setOrientation(width < 720 && height > width * 0.85 ? 'TB' : 'LR');
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (!userViewport.current) fitRef.current();
+      }, 180);
     });
     ro.observe(el);
-    return () => ro.disconnect();
+    return () => {
+      ro.disconnect();
+      clearTimeout(timer);
+    };
   }, []);
   useEffect(() => {
     layoutCase.current = null;
@@ -319,16 +344,20 @@ function GraphCanvas(p: Props & { commandsRef: { current: GraphCommands | null }
     const key = `${p.c.id}|${entityCount}|${layoutNonce}`;
     if (key === lastFitKey.current) return;
     lastFitKey.current = key;
-    const id = setTimeout(() => void fitView({ padding: 0.12, duration: 650, maxZoom: 1.05 }), 120);
+    userViewport.current = false;
+    const id = setTimeout(() => fitRef.current(), 120);
     return () => clearTimeout(id);
-  }, [p.c.id, entityCount, layoutNonce, fitView]);
+  }, [p.c.id, entityCount, layoutNonce]);
 
   p.commandsRef.current = {
     relayout: () => {
       layoutCase.current = null;
       setLayoutNonce((n) => n + 1);
     },
-    fit: () => void fitView({ padding: 0.12, duration: 500, maxZoom: 1.05 }),
+    fit: () => {
+      userViewport.current = false;
+      fitRef.current();
+    },
   };
 
   const onNodesChange = useCallback((changes: NodeChange<EntityNodeType>[]) => {
@@ -385,6 +414,9 @@ function GraphCanvas(p: Props & { commandsRef: { current: GraphCommands | null }
         edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onNodeClick={(_, n) => p.onSelectEntity(n.id)}
+        onMoveStart={(event) => {
+          if (event) userViewport.current = true; // null = programmatic (fitView)
+        }}
         nodesConnectable={false}
         elementsSelectable={false}
         colorMode="dark"
@@ -392,11 +424,11 @@ function GraphCanvas(p: Props & { commandsRef: { current: GraphCommands | null }
         maxZoom={2}
         nodeOrigin={[0, 0.5]}
         fitView
-        fitViewOptions={{ padding: 0.12, maxZoom: 1.05 }}
+        fitViewOptions={FIT}
         proOptions={{ hideAttribution: false }}
       >
         <Background variant={BackgroundVariant.Dots} gap={22} size={1.2} color="#1e293b" />
-        <Controls showInteractive={false} position="bottom-left" orientation="horizontal" />
+        <Controls showInteractive={false} position="bottom-right" orientation="horizontal" />
         <MiniMap
           position="bottom-right"
           pannable
@@ -404,32 +436,35 @@ function GraphCanvas(p: Props & { commandsRef: { current: GraphCommands | null }
           nodeColor={(n) => ENTITY_META[(n.data as EntityNodeType['data']).entity.type].color}
           nodeStrokeWidth={0}
           nodeBorderRadius={6}
-          style={{ width: 132, height: 80 }}
+          style={{ width: 132, height: 80, marginBottom: 46 }}
           ariaLabel="Mini-map"
         />
       </ReactFlow>
-
+      <LegendPill />
     </div>
   );
 }
 
-/** Semantic colour legend, inline in the pane header so it never covers the graph. */
-function LegendChips() {
+/** Compact semantic colour legend pinned to the bottom-left of the canvas. */
+function LegendPill() {
   return (
-    <div className="hidden items-center gap-2.5 lg:flex" aria-label="คำอธิบายสี (Legend)">
+    <div
+      className="pointer-events-auto absolute bottom-2 left-2 z-10 flex max-w-[calc(100%-120px)] flex-wrap items-center gap-x-3 gap-y-1 rounded-full border border-ops-line2 bg-ops-bar/95 px-3 py-1.5 shadow-lg shadow-black/50 backdrop-blur"
+      aria-label="คำอธิบายสี (Legend)"
+    >
       {(Object.keys(ENTITY_META) as (keyof typeof ENTITY_META)[]).map((k) => {
         const m = ENTITY_META[k];
         const Icon = m.icon;
         return (
-          <span key={k} className="flex items-center gap-1 text-[10.5px] text-slate-400" title={`${m.th} · ${m.en}`}>
-            <Icon className="size-3" style={{ color: m.color }} />
-            <span className="hidden 2xl:inline">{m.th.split(' (')[0].split(' / ')[0]}</span>
+          <span key={k} className="flex items-center gap-1.5 whitespace-nowrap text-[11px] text-slate-200" title={`${m.th} · ${m.en}`}>
+            <Icon className="size-3.5" style={{ color: m.color }} />
+            {LEGEND_SHORT[k]}
           </span>
         );
       })}
       <span
-        className="text-slate-500 hover:text-slate-300"
-        title="เส้นไล่สีต้นทาง→ปลายทาง · ความหนา = มูลค่า · TAINT = สัดส่วนเงินผู้เสียหาย · แถบฟ้า = เงินผู้เสียหาย / เทา = เงินอื่น · ซูมออก = การ์ดย่อตัวอักษรใหญ่ (Semantic Zoom) · จอแนวตั้ง = ไหลบนลงล่าง"
+        className="text-slate-300 hover:text-white"
+        title="เส้นไล่สีต้นทาง→ปลายทาง · ความหนา = มูลค่า · TAINT = สัดส่วนเงินผู้เสียหาย · แถบฟ้า = เงินผู้เสียหาย / เทา = เงินอื่น · ซูมออก = การ์ดตัวอักษรใหญ่ · จอแนวตั้ง = ไหลบนลงล่าง"
       >
         <Info className="size-3.5" />
       </span>
@@ -437,20 +472,27 @@ function LegendChips() {
   );
 }
 
+const LEGEND_SHORT: Record<keyof typeof ENTITY_META, string> = {
+  victim: 'ผู้เสียหาย',
+  mule_bank: 'บัญชีม้า',
+  crypto_wallet: 'คริปโต',
+  exchange: 'Exchange',
+  cash_out: 'ATM / เงินสด',
+};
+
 export default function MoneyFlowGraph(p: Props) {
   const commands = useRef<GraphCommands | null>(null);
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <PaneHeader icon={Workflow} title="เส้นทางการเงินข้ามช่องทาง" badge="CROSS-RAIL MONEY FLOW · FIAT ↔ CRYPTO ↔ CASH" accent="#f59e0b">
-        <LegendChips />
+      <PaneHeader icon={Workflow} title="เส้นทางการเงินข้ามช่องทาง" subtitle={p.c.title} accent="#f59e0b">
         <IconButton title="จัดเรียงอัตโนมัติ / รีเซ็ตเลย์เอาต์ (Auto-Arrange / Reset Layout)" onClick={() => commands.current?.relayout()} className="h-7">
           <LayoutGrid className="size-3.5" />
-          <span className="hidden text-[11px] sm:inline">จัดเรียงอัตโนมัติ</span>
+          <span className="hidden whitespace-nowrap text-[11.5px] sm:inline">จัดเรียงอัตโนมัติ</span>
         </IconButton>
         <IconButton title="พอดีหน้าจอ (Fit view)" onClick={() => commands.current?.fit()} className="h-7">
           <Maximize className="size-3.5" />
         </IconButton>
-        <span className="num rounded border border-fuchsia-500/40 bg-fuchsia-500/10 px-1.5 py-px text-[10px] text-fuchsia-200">TAINT · {p.method === 'fifo' ? 'FIFO' : 'PROPORTIONAL'}</span>
+        <span className="num hidden whitespace-nowrap rounded border border-fuchsia-400/60 bg-fuchsia-500/15 px-2 py-0.5 text-[11px] font-semibold text-fuchsia-100 sm:inline">TAINT · {p.method === 'fifo' ? 'FIFO' : 'PROPORTIONAL'}</span>
       </PaneHeader>
       <DispositionBar taint={p.taint} method={p.method} />
       <ReactFlowProvider>

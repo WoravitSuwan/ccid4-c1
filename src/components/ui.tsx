@@ -56,7 +56,7 @@ export function CopyButton({ text, label, className, title }: { text: string; la
         }
       }}
       className={cx(
-        'inline-flex shrink-0 items-center gap-1 rounded-md border border-ops-line px-1.5 py-0.5 text-[10.5px] text-slate-400 transition hover:border-ops-line2 hover:text-slate-100',
+        'inline-flex shrink-0 items-center gap-1 rounded-md border border-ops-line2 px-1.5 py-0.5 text-[11px] text-slate-300 transition hover:border-slate-400 hover:text-white',
         done && 'border-emerald-500/50 text-emerald-300',
         className,
       )}
@@ -71,23 +71,34 @@ export function PaneHeader({
   icon: Icon,
   title,
   badge,
+  subtitle,
   accent = '#38bdf8',
   children,
 }: {
   icon: LucideIcon;
   title: string;
-  badge: string;
+  /** Mono technical tag (e.g. LIVE TACTICAL GEO) */
+  badge?: string;
+  /** Plain context line (e.g. the active case title) */
+  subtitle?: string;
   accent?: string;
   children?: ReactNode;
 }) {
   return (
-    <div className="flex h-10 shrink-0 items-center gap-2 border-b border-ops-line bg-ops-bar/80 px-3">
+    <div className="flex h-11 shrink-0 items-center gap-2.5 border-b border-ops-line bg-ops-bar px-3">
       <Icon className="size-4 shrink-0" style={{ color: accent }} />
-      <h2 className="truncate text-[13px] font-semibold text-slate-100">{title}</h2>
-      <span className="num hidden shrink-0 rounded border border-ops-line px-1.5 py-px text-[9.5px] tracking-wider text-slate-500 sm:inline">
-        {badge}
-      </span>
-      <div className="ml-auto flex items-center gap-1.5">{children}</div>
+      <h2 className="shrink-0 whitespace-nowrap text-[14px] font-semibold text-slate-50">{title}</h2>
+      {badge && (
+        <span className="num hidden shrink-0 whitespace-nowrap rounded border border-ops-line2 px-1.5 py-0.5 text-[10px] tracking-wider text-slate-300 xl:inline">
+          {badge}
+        </span>
+      )}
+      {subtitle && (
+        <span className="hidden min-w-0 whitespace-nowrap rounded-md bg-white/[0.04] px-2 py-0.5 text-[12px] text-slate-300 lg:inline" title={subtitle}>
+          {subtitle}
+        </span>
+      )}
+      <div className="ml-auto flex shrink-0 items-center gap-1.5">{children}</div>
     </div>
   );
 }
@@ -151,7 +162,7 @@ export function IconButton({
         'inline-flex h-8 items-center justify-center gap-1.5 rounded-md border px-2 text-[12px] transition disabled:cursor-not-allowed disabled:opacity-40',
         active
           ? 'border-sky-400/60 bg-sky-400/10 text-sky-200'
-          : 'border-ops-line bg-ops-card text-slate-300 hover:border-ops-line2 hover:bg-ops-raised hover:text-white',
+          : 'border-ops-line2 bg-ops-card text-slate-200 hover:border-slate-500 hover:bg-ops-raised hover:text-white',
         className,
       )}
     >
@@ -163,11 +174,11 @@ export function IconButton({
 export function Stat({ label, value, sub, color }: { label: string; value: ReactNode; sub?: ReactNode; color?: string }) {
   return (
     <div className="min-w-0 rounded-md border border-ops-line bg-ops-bg/60 px-2 py-1.5">
-      <div className="truncate text-[10px] text-slate-500">{label}</div>
+      <div className="truncate text-[10.5px] text-slate-300">{label}</div>
       <div className="num truncate text-[13px] font-semibold text-slate-100" style={color ? { color } : undefined}>
         {value}
       </div>
-      {sub && <div className="num truncate text-[10px] text-slate-500">{sub}</div>}
+      {sub && <div className="num truncate text-[10.5px] text-slate-400">{sub}</div>}
     </div>
   );
 }
